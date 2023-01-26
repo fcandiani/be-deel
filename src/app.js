@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { sequelize } = require('./model');
+const { sequelize, Contract } = require('./model');
 const { Op } = require('sequelize');
 const { getProfile } = require('./middleware/getProfile');
 const app = express();
@@ -24,7 +24,11 @@ app.get('/contracts/:id', getProfile, async (req, res) => {
             [Op.or]: [{ ClientId: profile.id }, { ContractorId: profile.id }],
         },
     });
-    if (!contract) return res.status(404).end();
+
+    if (!contract) {
+        return res.status(404).end();
+    }
+
     res.json(contract);
 });
 
@@ -37,8 +41,35 @@ app.get('/contracts', getProfile, async (req, res) => {
             [Op.or]: [{ ClientId: profile.id }, { ContractorId: profile.id }],
         },
     });
-    if (!contract) return res.status(404).end();
+
+    if (!contract) {
+        return res.status(404).end();
+    }
+
     res.json(contract);
+});
+
+app.get('/jobs/unpaid', getProfile, async (req, res) => {
+    const { Job } = req.app.get('models');
+    const { profile } = req;
+
+    const jobs = await Job.findAll({
+        where: {
+            paid: { [Op.or]: { [Op.eq]: false, [Op.is]: null } },
+            '$Contract.status$': { [Op.ne]: ContractState.TERMINATED },
+            [Op.or]: [
+                { '$Contract.ClientId$': profile.id },
+                { '$Contract.ContractorId$': profile.id },
+            ],
+        },
+        include: [{ model: Contract, as: Contract.modelName }],
+    });
+
+    if (!jobs) {
+        return res.status(404).end();
+    }
+
+    res.json(jobs);
 });
 
 module.exports = app;
