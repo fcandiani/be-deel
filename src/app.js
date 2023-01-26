@@ -269,6 +269,10 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
     return res.status(500).end();
 });
 
+/**
+ * @returns the best paid profession by period
+ */
+// /admin/best-profession?start=<date>&end=<date>
 app.get('/admin/best-profession', getProfile, async (req, res) => {
     const { Profile, Job, Contract } = req.app.get('models');
     const { start, end } = req.query;
@@ -322,6 +326,78 @@ app.get('/admin/best-profession', getProfile, async (req, res) => {
         amount: bestPaidProfession.totalAmount,
         name: bestPaidProfession.Contract.Contractor.profession,
     });
+});
+
+/**
+ * @returns Clients that paid the most for jobs in the query time period
+ */
+// /admin/best-clients?start=<date>&end=<date>&limit=<integer></integer>
+// {
+//     "id": 1,
+//     "fullName": "Reece Moyer",
+//     "paid" : 100.3
+// },
+app.get('/admin/best-clients', getProfile, async (req, res) => {
+    const { Profile, Job, Contract } = req.app.get('models');
+    const { start, end } = req.query;
+    const limit = req.query.limit || 2;
+
+    if (!start || !end) {
+        return res.status(422).json({ message: 'invalid start or end date' });
+    }
+
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate) || isNaN(endDate)) {
+        return res.status(422).json({ message: 'invalid start or end date' });
+    }
+
+    startDate.setUTCHours(0, 0, 0, 1);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    const bestPaiyngClients = await Job.findAll({
+        where: {
+            paid: { [Op.eq]: true },
+            paymentDate: { [Op.between]: [startDate, endDate] },
+        },
+        include: [
+            {
+                model: Contract,
+                as: Contract.modelName,
+                attributes: ['ClientId'],
+                include: [
+                    {
+                        model: Profile,
+                        as: 'Client',
+                        attributes: ['id', 'firstName', 'lastName', 'fullName'],
+                    },
+                ],
+            },
+        ],
+        attributes: [
+            'ContractId',
+            [sequelize.fn('sum', sequelize.col('price')), 'totalAmount'],
+        ],
+        limit: limit,
+        group: 'ClientId',
+        order: [['totalAmount', 'DESC']],
+    });
+
+    if (!bestPaiyngClients) {
+        return res.status(404).end();
+    }
+
+    return res.status(200).json(
+        bestPaiyngClients.map((el) => {
+            const { Client } = el.Contract;
+            return {
+                id: Client.id,
+                fullName: Client.fullName,
+                paid: el.getDataValue('totalAmount'),
+            };
+        })
+    );
 });
 
 module.exports = app;

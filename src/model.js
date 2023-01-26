@@ -26,6 +26,17 @@ Profile.init(
         type: {
             type: Sequelize.ENUM('client', 'contractor'),
         },
+        fullName: {
+            type: Sequelize.VIRTUAL,
+            get() {
+                return `${this.firstName} ${this.lastName}`;
+            },
+            set() {
+                throw new Error(
+                    'Invalid operation. `fullName` is a virtual value!'
+                );
+            },
+        },
     },
     {
         sequelize,
