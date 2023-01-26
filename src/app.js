@@ -199,7 +199,7 @@ app.post('/jobs/:jobId/pay', getProfile, async (req, res) => {
  * @returns pay fully for a job by id
  */
 app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
-    const { Profile } = req.app.get('models');
+    const { Profile, Job } = req.app.get('models');
     const { amount } = req.body;
     const { userId } = req.params;
 
@@ -211,6 +211,37 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
     }
 
     try {
+        const jobsToPay = await Job.findAll(
+            {
+                where: {
+                    paid: { [Op.or]: { [Op.eq]: false, [Op.is]: null } },
+                    '$Contract.status$': { [Op.ne]: ContractState.TERMINATED },
+                    [Op.or]: { '$Contract.ClientId$': userId },
+                },
+                include: [{ model: Contract, as: Contract.modelName }],
+            },
+            { lock: true, transaction: sequelizeTransaction }
+        );
+
+        if (!jobsToPay) {
+            await sequelizeTransaction.rollback();
+            return res.status(422).json({
+                message: 'Cannot more than 25% his total of jobs to pay.',
+            });
+        }
+
+        const amountDue = jobsToPay.reduce(
+            (accumulator, currentValue) => accumulator + currentValue.price,
+            0
+        );
+
+        if (amount > amountDue * 0.25) {
+            await sequelizeTransaction.rollback();
+            return res.status(422).json({
+                message: 'Cannot more than 25% his total of jobs to pay.',
+            });
+        }
+
         const depositReceiver = await Profile.findOne(
             {
                 where: {
