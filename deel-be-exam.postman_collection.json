@@ -1,0 +1,293 @@
+{
+	"info": {
+		"_postman_id": "0ec40e10-2d0f-4b7d-a4ee-cf7ce99af514",
+		"name": "Deel-be-exam",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16859"
+	},
+	"item": [
+		{
+			"name": "Contracts",
+			"item": [
+				{
+					"name": "Get Contract by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/contracts/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"contracts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Non Terminated Contracts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/contracts",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"contracts"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Jobs",
+			"item": [
+				{
+					"name": "Get All unpaid Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/jobs/unpaid",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"jobs",
+								"unpaid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Pay job by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/jobs/{{jobId}}/pay",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"jobs",
+								"{{jobId}}",
+								"pay"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Helpers",
+			"item": [
+				{
+					"name": "Update database data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/update",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"update"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Profile",
+			"item": [
+				{
+					"name": "Add a deposit by userId",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 50\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/balances/deposit/{{userId}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"balances",
+								"deposit",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "Get the most paid profession by period",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/admin/best-profession?start=ddd&end=2023-01-26",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"admin",
+								"best-profession"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "ddd"
+								},
+								{
+									"key": "end",
+									"value": "2023-01-26"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get clients that paid most by period",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "profile_id",
+								"value": "{{profileId}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/admin/best-clients?start=2023-01-20&end=2023-01-26&limit=1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"admin",
+								"best-clients"
+							],
+							"query": [
+								{
+									"key": "start",
+									"value": "2023-01-20"
+								},
+								{
+									"key": "end",
+									"value": "2023-01-26"
+								},
+								{
+									"key": "limit",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "profileId",
+			"value": "1"
+		},
+		{
+			"key": "jobId",
+			"value": "1 "
+		},
+		{
+			"key": "url",
+			"value": "localhost:3001",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "1"
+		}
+	]
+}
