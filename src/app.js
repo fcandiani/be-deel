@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { sequelize, Contract } = require('./model');
+const { sequelize } = require('./model');
 const { Op } = require('sequelize');
 const { getProfile } = require('./middleware/getProfile');
 const app = express();
@@ -18,7 +18,7 @@ app.get('/update', async (req, res) => {
     const { Job, Contract, Profile } = req.app.get('models');
     const job = await Job.findOne({
         where: {
-            id: { [Op.eq]: 2 },
+            id: { [Op.eq]: 14 },
         },
     });
 
@@ -35,8 +35,9 @@ app.get('/update', async (req, res) => {
     });
 
     job.update({
-        paid: null,
-        paymentDate: null,
+        paid: true,
+        paymentDate: new Date().toISOString(),
+        ContractId: 8,
     });
 
     profile.update({});
@@ -90,7 +91,7 @@ app.get('/contracts', getProfile, async (req, res) => {
  * @returns all unpaid jobs
  */
 app.get('/jobs/unpaid', getProfile, async (req, res) => {
-    const { Job } = req.app.get('models');
+    const { Job, Contract } = req.app.get('models');
     const { profile } = req;
 
     const jobs = await Job.findAll({
@@ -117,7 +118,7 @@ app.get('/jobs/unpaid', getProfile, async (req, res) => {
  */
 // TODO: Since is a post method, should we received the amount that is being paid?
 app.post('/jobs/:jobId/pay', getProfile, async (req, res) => {
-    const { Job, Profile } = req.app.get('models');
+    const { Job, Profile, Contract } = req.app.get('models');
     const { profile } = req;
     const { jobId } = req.params;
 
@@ -199,7 +200,7 @@ app.post('/jobs/:jobId/pay', getProfile, async (req, res) => {
  * @returns pay fully for a job by id
  */
 app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
-    const { Profile, Job } = req.app.get('models');
+    const { Profile, Job, Contract } = req.app.get('models');
     const { amount } = req.body;
     const { userId } = req.params;
 
@@ -266,6 +267,61 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
     }
 
     return res.status(500).end();
+});
+
+app.get('/admin/best-profession', getProfile, async (req, res) => {
+    const { Profile, Job, Contract } = req.app.get('models');
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+        return res.status(422).json({ message: 'invalid start or end date' });
+    }
+
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate) || isNaN(endDate)) {
+        return res.status(422).json({ message: 'invalid start or end date' });
+    }
+
+    startDate.setUTCHours(0, 0, 0, 1);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    const bestPaidProfession = await Job.findOne({
+        where: {
+            paid: { [Op.eq]: true },
+            paymentDate: { [Op.between]: [startDate, endDate] },
+        },
+        include: [
+            {
+                model: Contract,
+                as: Contract.modelName,
+                attributes: ['ContractorId'],
+                include: [
+                    {
+                        model: Profile,
+                        as: 'Contractor',
+                        attributes: ['profession'],
+                    },
+                ],
+            },
+        ],
+        attributes: [
+            'ContractId',
+            [sequelize.fn('sum', sequelize.col('price')), 'totalAmount'],
+        ],
+        group: 'ContractorId',
+        order: [['totalAmount', 'DESC']],
+    });
+
+    if (!bestPaidProfession) {
+        return res.status(404).end();
+    }
+
+    return res.status(200).json({
+        amount: bestPaidProfession.totalAmount,
+        name: bestPaidProfession.Contract.Contractor.profession,
+    });
 });
 
 module.exports = app;
