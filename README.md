@@ -1,3 +1,18 @@
+# Considerations
+
+Hi! :)
+
+My name is Fernando, I'm glad to be participating on this task.
+Unfortunately only had 3 hours to complete and I got a bit stuck on Sequelize syntax for relation query on the last 2 routets, so I couldn't go as far as I wished.
+
+Few extras steps (if I had the time), I would taken for a better result.
+
+1. Better folder structure and usage of repositories and controllers for easier testing
+1. Tests implementation using jest
+1. Swagger documentation
+1. Joi for request validation
+1. Perheps use docker
+
 # DEEL BACKEND TASK
 
 💫 Welcome! 🎉
