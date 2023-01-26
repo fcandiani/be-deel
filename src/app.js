@@ -12,6 +12,40 @@ app.set('sequelize', sequelize);
 app.set('models', sequelize.models);
 
 /**
+ * Helper method to update database data for testing purposes
+ */
+app.get('/update', async (req, res) => {
+    const { Job, Contract, Profile } = req.app.get('models');
+    const job = await Job.findOne({
+        where: {
+            id: { [Op.eq]: 2 },
+        },
+    });
+
+    const profile = await Profile.findOne({
+        where: {
+            id: { [Op.eq]: 2 },
+        },
+    });
+
+    const contract = await Contract.findOne({
+        where: {
+            id: { [Op.eq]: 2 },
+        },
+    });
+
+    job.update({
+        paid: null,
+        paymentDate: null,
+    });
+
+    profile.update({});
+    contract.update({});
+
+    return res.status(200).end();
+});
+
+/**
  * @returns contract by id
  */
 app.get('/contracts/:id', getProfile, async (req, res) => {
@@ -29,9 +63,12 @@ app.get('/contracts/:id', getProfile, async (req, res) => {
         return res.status(404).end();
     }
 
-    res.json(contract);
+    return res.json(contract);
 });
 
+/**
+ * @returns all non-terminated contracts
+ */
 app.get('/contracts', getProfile, async (req, res) => {
     const { Contract } = req.app.get('models');
     const { profile } = req;
@@ -46,9 +83,12 @@ app.get('/contracts', getProfile, async (req, res) => {
         return res.status(404).end();
     }
 
-    res.json(contract);
+    return res.json(contract);
 });
 
+/**
+ * @returns all unpaid jobs
+ */
 app.get('/jobs/unpaid', getProfile, async (req, res) => {
     const { Job } = req.app.get('models');
     const { profile } = req;
@@ -69,7 +109,90 @@ app.get('/jobs/unpaid', getProfile, async (req, res) => {
         return res.status(404).end();
     }
 
-    res.json(jobs);
+    return res.json(jobs);
+});
+
+/**
+ * @returns pay fully for a job by id
+ */
+// TODO: Since is a post method, should we received the amount that is being paid?
+app.post('/jobs/:jobId/pay', getProfile, async (req, res) => {
+    const { Job, Profile } = req.app.get('models');
+    const { profile } = req;
+    const { jobId } = req.params;
+
+    const sequelizeTransaction = await sequelize.transaction();
+
+    try {
+        const job = await Job.findOne(
+            {
+                where: {
+                    id: { [Op.eq]: jobId },
+                    paid: { [Op.or]: { [Op.eq]: false, [Op.is]: null } },
+                    '$Contract.status$': { [Op.ne]: ContractState.TERMINATED },
+                    [Op.or]: { '$Contract.ClientId$': profile.id },
+                },
+                include: [{ model: Contract, as: Contract.modelName }],
+            },
+            { lock: true, transaction: sequelizeTransaction }
+        );
+
+        if (!job) {
+            await sequelizeTransaction.rollback();
+            return res.status(404).end();
+        }
+
+        if (job.price >= profile.balance) {
+            await sequelizeTransaction.rollback();
+            return res.status(403).json({ message: 'Not enough balance!' });
+        }
+
+        const contractor = await Profile.findOne(
+            {
+                where: {
+                    id: { [Op.eq]: job.Contract.ContractorId },
+                },
+            },
+            { lock: true, transaction: sequelizeTransaction }
+        );
+
+        if (!contractor) {
+            await sequelizeTransaction.rollback();
+            return res.status(404).end();
+        }
+
+        await profile.update(
+            {
+                balance: profile.balance - job.price,
+            },
+            { transaction: sequelizeTransaction }
+        );
+
+        await contractor.update(
+            {
+                balance: contractor.balance + job.price,
+            },
+            { transaction: sequelizeTransaction }
+        );
+
+        await job.update(
+            {
+                paid: true,
+                paymentDate: new Date().toISOString(),
+            },
+            { transaction: sequelizeTransaction }
+        );
+
+        // TODO: should a contract be terminated when a payment is made?
+
+        await sequelizeTransaction.commit();
+
+        return res.json(job);
+    } catch (error) {
+        await sequelizeTransaction.rollback();
+    }
+
+    return res.status(500).end();
 });
 
 module.exports = app;
