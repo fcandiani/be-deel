@@ -195,4 +195,46 @@ app.post('/jobs/:jobId/pay', getProfile, async (req, res) => {
     return res.status(500).end();
 });
 
+/**
+ * @returns pay fully for a job by id
+ */
+app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
+    const { Profile } = req.app.get('models');
+    const { amount } = req.body;
+    const { userId } = req.params;
+
+    const sequelizeTransaction = await sequelize.transaction();
+
+    // zero is also considered a invalid amount
+    if (!amount || typeof amount !== 'number' || amount < 0) {
+        return res.status(422).json({ message: 'invalid amount' });
+    }
+
+    try {
+        const depositReceiver = await Profile.findOne(
+            {
+                where: {
+                    id: { [Op.eq]: userId },
+                },
+            },
+            { lock: true, transaction: sequelizeTransaction }
+        );
+
+        if (!depositReceiver) {
+            await sequelizeTransaction.rollback();
+            return res.status(404).end();
+        }
+
+        await depositReceiver.update({
+            balance: depositReceiver.balance + amount,
+        });
+
+        return res.json(depositReceiver);
+    } catch (error) {
+        await sequelizeTransaction.rollback();
+    }
+
+    return res.status(500).end();
+});
+
 module.exports = app;
